@@ -157,7 +157,7 @@ header p{font-size:11px;opacity:.75;margin-top:2px;}
   <!-- Per-driver today schedule (for end time / rest calculation) -->
   <div style="margin-top:20px">
     <div class="card-title" style="margin-bottom:8px">🕐 各司機今日收班時間</div>
-    <div class="hint">💡 這裡記錄每位司機今天最後一班的預估收班時間，用於計算明天可出車時間。貼上班表後系統會嘗試自動帶入，也可手動填寫。</div>
+    <div class="hint">💡 這裡記錄每位司機今天最後一班的收班時間，用於計算明天可出車時間。貼上班表後系統會嘗試自動帶入，也可手動填寫。</div>
     <div id="today-driver-list"></div>
     <button class="save-btn" onclick="saveTodayEndTimes()">💾 儲存收班時間</button>
   </div>
@@ -363,7 +363,7 @@ function renderTodayDriverList(){
       </div>
       <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
         <div class="field" style="flex:1;min-width:120px">
-          <label>今日預估收班時間（24小時制 HH:MM）</label>
+          <label>今日收班時間（24小時制 HH:MM）</label>
           <input type="text" id="drv-end-${i}" value="${endTime}" placeholder="例：14:55" ${noWork?'disabled':''}
             style="font-size:18px;font-weight:700;letter-spacing:2px;color:var(--accent)"
             pattern="\d{2}:\d{2}" maxlength="5"
@@ -447,7 +447,7 @@ async function parseDriverEndTime(i){
     };
     save('scheduleData',scheduleData);
   }
-  showToast(`✓ ${d.name}：最晚班 ${latestStr}，預估收班 ${endStr}（已自動儲存）`);
+  showToast(`✓ ${d.name}：最晚班 ${latestStr}，收班 ${endStr}（已自動儲存）`);
 }
 
 function saveTodayEndTimes(){
