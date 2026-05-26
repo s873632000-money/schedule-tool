@@ -159,7 +159,6 @@ header p{font-size:11px;opacity:.75;margin-top:2px;}
     <div class="card-title" style="margin-bottom:8px">🕐 各司機今日收班時間</div>
     <div class="hint">💡 這裡記錄每位司機今天最後一班的收班時間，用於計算明天可出車時間。貼上班表後系統會嘗試自動帶入，也可手動填寫。</div>
     <div id="today-driver-list"></div>
-    <button class="save-btn" onclick="saveTodayEndTimes()">💾 儲存收班時間</button>
   </div>
 </div>
 
@@ -374,6 +373,10 @@ function renderTodayDriverList(){
             onchange="document.getElementById('drv-end-${i}').disabled=this.checked">
           <label for="drv-nowork-${i}">今天沒出車</label>
         </div>
+        <button onclick="saveOneDriverEndTime(${i})" 
+          style="padding:8px 14px;background:var(--accent);color:white;border:none;border-radius:8px;font-size:12px;cursor:pointer;margin-bottom:8px">
+          💾 儲存
+        </button>
       </div>
       ${sd.lastRoute?`<div style="font-size:11px;color:var(--sub);margin-top:4px">末班路線：${esc(sd.lastRoute)}</div>`:''}
     </div>`;
@@ -448,6 +451,22 @@ async function parseDriverEndTime(i){
     save('scheduleData',scheduleData);
   }
   showToast(`✓ ${d.name}：最晚班 ${latestStr}，收班 ${endStr}（已自動儲存）`);
+}
+
+function saveOneDriverEndTime(i){
+  const date = document.getElementById('trips-date').value;
+  if(!date){showToast('請先選日期');return;}
+  const EXCL2 = ['陳坤松'];
+  const named = drivers.filter(d=>d.name&&!d.noSchedule&&!EXCL2.includes(d.name)&&(d.type==='公司司機'||(d.type==='靠行司機'&&d.name==='陳志東')));
+  const d = named[i];
+  if(!d) return;
+  const endEl = document.getElementById('drv-end-'+i);
+  const noworkEl = document.getElementById('drv-nowork-'+i);
+  if(!scheduleData[date]) scheduleData[date]={};
+  const existing = scheduleData[date][d.id]||{};
+  scheduleData[date][d.id] = {...existing, endTime:endEl?endEl.value:'', noWork:noworkEl?noworkEl.checked:false};
+  save('scheduleData', scheduleData);
+  showToast(`✓ ${d.name} 收班時間已儲存`);
 }
 
 function saveTodayEndTimes(){
