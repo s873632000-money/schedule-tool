@@ -1,0 +1,1857 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>司機排班輔助工具</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+:root{
+  --bg:#F5F3EF;--card:#fff;--border:#E0DDD8;--text:#1A1916;--sub:#6B6860;--muted:#9E9B94;
+  --green:#1A7A52;--green-bg:#E6F4ED;--red:#B02020;--red-bg:#FDEAEA;
+  --amber:#B05E10;--amber-bg:#FDF0E4;--blue:#1A4FA0;--blue-bg:#E8EEFA;
+  --purple:#5B3FA0;--purple-bg:#EEEAFA;--accent:#2C6E49;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+input[type="time"]{-webkit-appearance:none;appearance:none;}
+input[type="time"]::-webkit-datetime-edit-ampm-field{display:none;}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:80px;}
+header{background:var(--accent);color:white;padding:16px 20px 12px;}
+header h1{font-size:17px;font-weight:700;}
+header p{font-size:11px;opacity:.75;margin-top:2px;}
+.tabs{display:flex;background:white;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10;overflow-x:auto;}
+.tab{flex:1;min-width:64px;padding:11px 4px;text-align:center;font-size:11px;font-weight:500;color:var(--sub);background:none;border:none;border-bottom:3px solid transparent;cursor:pointer;font-family:inherit;white-space:nowrap;}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.panel{display:none;padding:14px;}.panel.active{display:block;}
+.hint{font-size:12px;color:var(--blue);background:var(--blue-bg);border-radius:10px;padding:10px 12px;margin-bottom:12px;line-height:1.6;}
+.hint.green{color:var(--green);background:var(--green-bg);}
+.hint.amber{color:var(--amber);background:var(--amber-bg);}
+.hint.red{color:var(--red);background:var(--red-bg);}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px;}
+.card-title{font-size:14px;font-weight:700;margin-bottom:12px;}
+.field{flex:1;}
+.field label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;}
+.field input,.field select,.field textarea{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit;outline:none;}
+.field input[type="time"]{font-size:15px;font-weight:600;letter-spacing:1px;}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);}
+.field-row{display:flex;gap:8px;margin-bottom:10px;}
+.save-btn{width:100%;padding:13px;border-radius:12px;background:var(--accent);color:white;font-size:15px;font-weight:700;border:none;cursor:pointer;font-family:inherit;margin-top:4px;}
+.add-btn{width:100%;padding:12px;border:1.5px dashed var(--border);border-radius:12px;background:transparent;color:var(--sub);font-size:13px;cursor:pointer;font-family:inherit;margin-bottom:10px;}
+.add-btn:hover{background:white;color:var(--accent);border-color:var(--accent);}
+.parse-btn{padding:8px 16px;background:var(--accent);color:white;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+.paste-area{width:100%;min-height:80px;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:monospace;resize:vertical;outline:none;line-height:1.7;}
+.paste-area:focus{border-color:var(--accent);}
+.avatar{width:38px;height:38px;border-radius:50%;background:var(--accent);color:white;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;}
+.ds-name{font-size:14px;font-weight:700;}
+.ds-sub{font-size:11px;color:var(--sub);}
+.badge{font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;}
+.badge-green{background:var(--green-bg);color:var(--green);}
+.badge-amber{background:var(--amber-bg);color:var(--amber);}
+.badge-red{background:var(--red-bg);color:var(--red);}
+.badge-blue{background:var(--blue-bg);color:var(--blue);}
+.badge-purple{background:var(--purple-bg);color:var(--purple);}
+.sep{height:1px;background:var(--border);margin:10px 0;}
+.date-row{display:flex;gap:8px;margin-bottom:12px;align-items:center;}
+.date-row input[type=date]{flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px;background:white;color:var(--text);font-family:inherit;outline:none;}
+.go-btn{padding:9px 16px;background:var(--accent);color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;}
+.empty-msg{text-align:center;color:var(--muted);font-size:13px;padding:20px 0;}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--text);color:white;padding:10px 20px;border-radius:20px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:1000;white-space:nowrap;}
+.toast.show{opacity:1;}
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);}
+.setting-row:last-child{border-bottom:none;}
+.setting-label{font-size:14px;font-weight:500;}
+.setting-sub{font-size:12px;color:var(--sub);margin-top:2px;}
+.setting-input{padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);width:70px;text-align:center;outline:none;font-family:inherit;}
+
+/* Trip cards */
+.trip-card{background:white;border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px;position:relative;}
+.trip-card.assigned{border-left:4px solid var(--green);}
+.trip-card.pending{border-left:4px solid var(--amber);}
+.trip-card.special{border-left:4px solid var(--purple);}
+.trip-time{font-size:18px;font-weight:700;color:var(--accent);}
+.trip-route{font-size:13px;font-weight:500;margin:3px 0;}
+.trip-meta{font-size:12px;color:var(--sub);}
+.trip-del{position:absolute;top:10px;right:10px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:2px 6px;}
+.trip-del:hover{color:var(--red);}
+.trip-assign{margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+.assign-select{flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);font-family:inherit;outline:none;}
+.assign-select:focus{border-color:var(--accent);}
+
+/* Driver schedule blocks */
+.drv-block{background:white;border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:10px;}
+.drv-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.drv-trips{margin-bottom:8px;}
+.drv-trip-row{font-size:12px;color:var(--sub);padding:3px 0;border-bottom:1px solid var(--bg);}
+.drv-trip-row:last-child{border-bottom:none;}
+
+/* Suggestion cards */
+.sug-card{background:white;border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px;}
+.sug-card.ok{border-left:4px solid var(--green);}
+.sug-card.warn{border-left:4px solid var(--amber);}
+.sug-card.no{border-left:4px solid var(--red);}
+.sug-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;}
+.sug-av.ok{background:var(--green-bg);color:var(--green);}
+.sug-av.warn{background:var(--amber-bg);color:var(--amber);}
+.sug-av.no{background:var(--red-bg);color:var(--red);}
+.sug-body{flex:1;}
+.sug-name{font-size:14px;font-weight:700;}
+.sug-detail{font-size:12px;color:var(--sub);margin-top:3px;line-height:1.7;}
+
+/* Profile */
+.name-input{font-size:15px;font-weight:700;border:none;background:transparent;color:var(--text);width:100%;padding:0;outline:none;font-family:inherit;}
+.type-select{font-size:12px;color:var(--sub);border:none;background:transparent;font-family:inherit;padding:0;outline:none;cursor:pointer;}
+.remove-btn{font-size:12px;color:var(--muted);background:none;border:none;cursor:pointer;float:right;font-family:inherit;}
+.remove-btn:hover{color:var(--red);}
+.note-field{width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit;outline:none;margin-top:6px;}
+.day-row{display:flex;gap:4px;margin-top:6px;}
+.day-btn{flex:1;height:32px;border-radius:7px;border:1px solid var(--border);background:white;font-size:11px;cursor:pointer;font-family:inherit;color:var(--sub);}
+.day-btn.off{background:var(--red-bg);border-color:#F4A0A0;color:var(--red);font-weight:700;}
+.leave-row{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--border);}
+.leave-row:last-child{border-bottom:none;}
+.leave-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;}
+.leave-del:hover{color:var(--red);}
+</style>
+</head>
+<body>
+<header>
+  <h1>🚗 司機排班輔助工具</h1>
+  <p>班表輸入 → 自動配對司機 → 排班建議</p>
+</header>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('trips')">📋 班表輸入</button>
+  <button class="tab" onclick="switchTab('schedule')">🚗 排班建議</button>
+  <button class="tab" onclick="switchTab('leave')">🏖 假表</button>
+  <button class="tab" onclick="switchTab('profiles')">👤 司機檔案</button>
+  <button class="tab" onclick="switchTab('settings')">⚙ 設定</button>
+</div>
+
+<!-- 班表輸入 -->
+<div id="panel-trips" class="panel active">
+  <div class="hint">💡 選擇排班日期，從 Excel 貼上班表，系統自動解析並讓你指定司機。儲存後可在「排班建議」查看配對結果。</div>
+  <div style="display:flex;gap:8px;margin-bottom:12px">
+    <button class="save-btn" style="background:#6c757d;flex:1" onclick="showExportModal()">📤 匯出資料</button>
+    <button class="save-btn" style="background:#3a6ea5;flex:1" onclick="showImportModal()">📥 匯入資料</button>
+  </div>
+  <div class="date-row">
+    <input type="date" id="trips-date" onchange="loadTripsForDate()">
+  </div>
+
+  <!-- Excel paste -->
+  <div class="card">
+    <div class="card-title">📊 貼上 Excel 班表（Tab 格式）</div>
+    <div class="hint amber" style="margin-bottom:8px">⚠ RFT-9592（可德A）掛靠車會自動略過，不需排司機</div>
+    <textarea class="paste-area" id="excel-paste" rows="5"
+      placeholder="直接從 Excel 全選複製後貼在這裡（Tab 分隔格式）"></textarea>
+    <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="parse-btn" onclick="parseExcelTrips()">解析 Excel 班表</button>
+      <button class="parse-btn" style="background:#555" onclick="parseLineTrips()">解析 LINE 班表</button>
+      <button class="parse-btn" style="background:var(--red);margin-left:auto" onclick="clearTrips()">清除今日</button>
+    </div>
+  </div>
+
+  <!-- Trips list -->
+  <div id="trips-list"></div>
+  <button class="save-btn" onclick="saveTrips()">💾 儲存班表與指派</button>
+
+  <!-- Per-driver today schedule (for end time / rest calculation) -->
+  <div style="margin-top:20px">
+    <div class="card-title" style="margin-bottom:8px">🕐 各司機今日收班時間</div>
+    <div class="hint">💡 這裡記錄每位司機今天最後一班的預估收班時間，用於計算明天可出車時間。貼上班表後系統會嘗試自動帶入，也可手動填寫。</div>
+    <div id="today-driver-list"></div>
+    <button class="save-btn" onclick="saveTodayEndTimes()">💾 儲存收班時間</button>
+  </div>
+</div>
+
+<!-- 排班建議 -->
+<div id="panel-schedule" class="panel">
+  <div class="hint">💡 選擇要排班的日期，系統根據前一天的收班時間＋休息規則＋假表，建議每位司機是否可出車及最早時間，並顯示班次配對結果。</div>
+  <div class="date-row">
+    <input type="date" id="sched-date">
+    <button class="go-btn" onclick="runSchedule()">產生建議</button>
+  </div>
+  <div id="sched-result"></div>
+</div>
+
+<!-- 假表 -->
+<div id="panel-leave" class="panel">
+  <div class="hint">💡 輸入司機請假日期，排班建議會自動排除請假中的司機。</div>
+  <div class="card">
+    <div class="card-title">新增請假</div>
+    <div class="field-row">
+      <div class="field"><label>司機</label><select id="leave-driver"></select></div>
+      <div class="field"><label>開始日期</label><input type="date" id="leave-start"></div>
+      <div class="field"><label>結束日期</label><input type="date" id="leave-end"></div>
+    </div>
+    <div class="field" style="margin-bottom:10px"><label>備註</label><input type="text" id="leave-note" placeholder="家庭事務、回診..."></div>
+    <button class="save-btn" style="margin-top:0" onclick="addLeave()">新增假期</button>
+  </div>
+  <div class="card">
+    <div class="card-title">假表記錄</div>
+    <div id="leave-list"><div class="empty-msg">尚無請假記錄</div></div>
+  </div>
+</div>
+
+<!-- 司機檔案 -->
+<div id="panel-profiles" class="panel">
+  <div class="hint">💡 設定每位司機的基本資料、居住區域與車型。固定休假日點選變紅色。</div>
+  <div id="driver-list"></div>
+  <button class="add-btn" onclick="addDriver()">＋ 新增司機</button>
+  <div style="display:flex;gap:8px">
+    <button class="save-btn" onclick="saveDrivers()">💾 儲存司機資料</button>
+    <button class="save-btn" style="background:#6c757d;flex:0 0 auto;width:auto;padding:13px 18px" onclick="exportDriverData()">📤 匯出</button>
+  </div>
+</div>
+
+<!-- 設定 -->
+<div id="panel-settings" class="panel">
+  <div class="card">
+    <div class="card-title">排班規則</div>
+    <div class="setting-row">
+      <div><div class="setting-label">最少休息時數</div><div class="setting-sub">收班到下次出車最短間隔</div></div>
+      <div style="display:flex;align-items:center;gap:6px"><input type="number" class="setting-input" id="rest-hours" min="4" max="24" value="8"> 小時</div>
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">接機等待時間</div><div class="setting-sub">飛機降落到旅客上車的等待時間</div></div>
+      <div style="display:flex;align-items:center;gap:6px"><input type="number" class="setting-input" id="pickup-wait" min="0" max="120" value="40"> 分鐘</div>
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">班次間緩衝時間</div><div class="setting-sub">上一班結束到下一班出發地之間額外預留</div></div>
+      <div style="display:flex;align-items:center;gap:6px"><input type="number" class="setting-input" id="buffer-mins" min="0" max="60" value="20"> 分鐘</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">🗺 Google Maps API</div>
+    <div class="hint" style="margin-bottom:10px">用於自動計算行車時間。金鑰只存在你的瀏覽器。</div>
+    <div class="field" style="margin-bottom:10px">
+      <label>API 金鑰</label>
+      <input type="text" id="gmaps-key" placeholder="AIzaSy..." style="font-family:monospace;font-size:12px">
+    </div>
+    <div class="setting-row" style="padding-top:0">
+      <div><div class="setting-label">啟用自動計算收班時間</div></div>
+      <input type="checkbox" id="gmaps-enabled" style="width:20px;height:20px;cursor:pointer">
+    </div>
+    <div class="hint amber" id="gmaps-status" style="display:none;margin-top:8px"></div>
+  </div>
+  <button class="save-btn" onclick="saveSettings()">儲存設定</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Constants ──
+const DAYS=['一','二','三','四','五','六','日'];
+const VEHICLE_TYPES=['大車（T6）','小車（CAMRY）','GRANVIA（陳志東專屬）','ES350（簡正哲專屬）','VITO RFT-6139','ALPHARD（需電話確認）'];
+
+// ── State ──
+let drivers=[], leaves=[], tripsData={}, scheduleData={}, settings={restHours:8,bufferMins:20,gmapsKey:'',gmapsEnabled:false};
+
+// ── Storage ──
+function save(k,v){try{localStorage.setItem('sched_'+k,JSON.stringify(v));}catch(e){}}
+function load(k,def){
+  try{
+    // 先讀新版 key，讀不到就嘗試舊版 key（向下相容）
+    const v=localStorage.getItem('sched_'+k);
+    if(v) return JSON.parse(v);
+    const old=localStorage.getItem(k);
+    if(old){ const parsed=JSON.parse(old); save(k,parsed); return parsed; }
+    return def;
+  }catch(e){return def;}
+}
+
+// ── Utils ──
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+function getInitial(n){return n?n[0]:'?';}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+function switchTab(id){
+  document.querySelectorAll('.tab').forEach((t,i)=>{const ids=['trips','schedule','leave','profiles','settings'];t.classList.toggle('active',ids[i]===id);});
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+}
+function todayStr(){const d=new Date();return d.toISOString().slice(0,10);}
+function dateLabel(s){if(!s)return '';const d=new Date(s+'T00:00:00');return `${d.getMonth()+1}/${d.getDate()}（${DAYS[d.getDay()===0?6:d.getDay()-1]}）`;}
+function minsToTime(m){
+  // Handle negative or overflow
+  m = Math.max(0, m);
+  const h = Math.floor(m/60)%24;
+  const min = m%60;
+  return String(h).padStart(2,'0')+':'+String(min).padStart(2,'0');
+}
+function timeToMins(t){if(!t)return -1;const[h,m]=t.split(':').map(Number);return h*60+m;}
+
+// ── Default drivers ──
+function defaultDrivers(){
+  return [
+    {id:'d1',name:'簡世均',type:'公司司機',area:'高雄鳳山',vehicle:'大車（T6）',note:'',offDays:[]},
+    {id:'d2',name:'許宸緁',type:'公司司機',area:'台南安南',vehicle:'大車（T6）',note:'',offDays:[]},
+    {id:'d3',name:'周家宇',type:'公司司機',area:'雲林',vehicle:'大車（T6）',note:'雲林的司機，大部分都跑中北部，如果有北部下來南部的才會排，沒有規律時間，依照排班以及昨日收班後休息時間是否足夠去排班。有桃機下台南也有可能跑，因為有回頭車可以上去！',offDays:[]},
+    {id:'d4',name:'陳坤銘',type:'公司司機',area:'雲林',vehicle:'大車（T6）',note:'雲林的司機，大部分都跑中北部，如果有北部下來南部的才會排，沒有規律時間，依照排班以及昨日收班後休息時間是否足夠去排班。有桃機下台南也有可能跑，因為有回頭車可以上去！',offDays:[]},
+    {id:'d5',name:'廖俊翔',type:'公司司機',area:'雲林',vehicle:'大車（T6）',note:'雲林的司機，大部分都跑中北部，如果有北部下來南部的才會排，沒有規律時間，依照排班以及昨日收班後休息時間是否足夠去排班。有桃機下台南也有可能跑，因為有回頭車可以上去！',offDays:[]},
+    {id:'d6',name:'陳坤松',type:'公司司機',area:'台南中西區',vehicle:'大車（T6）',note:'不排班',offDays:[],noSchedule:true},
+    {id:'d7',name:'黃朋瑋',type:'公司司機',area:'台南仁德',vehicle:'大車（T6）',note:'',offDays:[]},
+    {id:'d8',name:'謝易詮',type:'公司司機',area:'台南佳里',vehicle:'大車（T6）',note:'',offDays:[]},
+    {id:'d9',name:'陳志東',type:'靠行司機',area:'高雄',vehicle:'GRANVIA（陳志東專屬）',note:'幾乎整天都有空，可納入排班',offDays:[]},
+  ];
+}
+
+// ── Init ──
+function loadAll(){
+  drivers=load('drivers',[]);
+  if(!drivers.length) drivers=defaultDrivers();
+  // Try multiple storage keys for leaves (backward compat)
+  leaves=load('leaves',[]);
+  if(!leaves.length){
+    try{const v=localStorage.getItem('leaves');if(v){leaves=JSON.parse(v);save('leaves',leaves);}}catch(e){}
+  }
+  tripsData=load('tripsData',{});
+  scheduleData=load('scheduleData',{});
+  settings=Object.assign({restHours:8,bufferMins:20,gmapsKey:'',gmapsEnabled:false,pickupWait:40},load('settings',{}));
+
+  // set today's date on trip input
+  document.getElementById('trips-date').value=todayStr();
+  document.getElementById('sched-date').value=todayStr();
+
+  // restore settings UI
+  document.getElementById('rest-hours').value=settings.restHours;
+  document.getElementById('buffer-mins').value=settings.bufferMins;
+  if(document.getElementById('pickup-wait')) document.getElementById('pickup-wait').value=settings.pickupWait||40;
+  if(document.getElementById('gmaps-key')) document.getElementById('gmaps-key').value=settings.gmapsKey||'';
+  if(document.getElementById('gmaps-enabled')) document.getElementById('gmaps-enabled').checked=!!settings.gmapsEnabled;
+  updateGmapsStatus();
+
+  renderDrivers();
+  renderLeaveDriverSelect();
+  renderLeaveList();
+  loadTripsForDate();
+}
+
+// ═══════════════════════════════════════
+// TRIPS PANEL
+// ═══════════════════════════════════════
+function loadTripsForDate(){
+  const date=document.getElementById('trips-date').value;
+  renderTripsList(date);
+  renderTodayDriverList();
+}
+
+// ── Per-driver today end time block ──
+function renderTodayDriverList(){
+  const date = document.getElementById('trips-date').value;
+  const el = document.getElementById('today-driver-list');
+  const named = drivers.filter(d=>d.name && (d.type==='公司司機'||(d.type==='靠行司機'&&d.name==='陳志東')));
+  if(!named.length){el.innerHTML='<div class="empty-msg">請先到「司機檔案」設定司機</div>';return;}
+
+  el.innerHTML = named.map((d,i)=>{
+    const sd = (scheduleData[date]||{})[d.id]||{};
+    const endTime = sd.endTime||'';
+    const noWork = sd.noWork||false;
+    return `<div class="drv-block">
+      <div class="drv-header">
+        <div class="avatar" style="width:34px;height:34px;font-size:13px">${getInitial(d.name)}</div>
+        <div>
+          <div class="ds-name">${esc(d.name)}</div>
+          <div class="ds-sub">${esc(d.area)} ｜ ${esc(d.type)}</div>
+        </div>
+      </div>
+      <div style="margin-bottom:8px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">📋 貼上 LINE 班表（此司機）</div>
+        <textarea class="paste-area" id="drv-paste-${i}" rows="3"
+          style="min-height:60px;font-size:12px"></textarea>
+        <button class="parse-btn" style="margin-top:6px;font-size:12px;padding:6px 12px"
+          onclick="parseDriverEndTime(${i})">解析帶入收班時間</button>
+      </div>
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+        <div class="field" style="flex:1;min-width:120px">
+          <label>今日預估收班時間（24小時制 HH:MM）</label>
+          <input type="text" id="drv-end-${i}" value="${endTime}" placeholder="例：14:55" ${noWork?'disabled':''}
+            style="font-size:18px;font-weight:700;letter-spacing:2px;color:var(--accent)"
+            pattern="\d{2}:\d{2}" maxlength="5"
+            oninput="this.value=this.value.replace(/[^0-9:]/g,'')">
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:13px;padding-bottom:8px">
+          <input type="checkbox" id="drv-nowork-${i}" ${noWork?'checked':''} style="width:16px;height:16px"
+            onchange="document.getElementById('drv-end-${i}').disabled=this.checked">
+          <label for="drv-nowork-${i}">今天沒出車</label>
+        </div>
+      </div>
+      ${sd.lastRoute?`<div style="font-size:11px;color:var(--sub);margin-top:4px">末班路線：${esc(sd.lastRoute)}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+async function parseDriverEndTime(i){
+  const date = document.getElementById('trips-date').value;
+  const EXCL = ['陳坤松'];
+  const named = drivers.filter(d=>d.name&&!d.noSchedule&&!EXCL.includes(d.name)&&(d.type==='公司司機'||(d.type==='靠行司機'&&d.name==='陳志東')));
+  const d = named[i];
+  if(!d) return;
+  const text = (document.getElementById('drv-paste-'+i).value||'').trim();
+  if(!text){showToast('請先貼上班表');return;}
+
+  const lines = text.split('\n').map(l=>l.trim()).filter(l=>l);
+  let latestMins=-1, latestStr='', latestRoute='';
+  lines.forEach(line=>{
+    const tm=line.match(/^(\d{1,2}):(\d{2})/);
+    if(tm){
+      const mins=parseInt(tm[1])*60+parseInt(tm[2]);
+      if(mins>latestMins){latestMins=mins;latestStr=tm[1].padStart(2,'0')+':'+tm[2];latestRoute=line.replace(/^\d{1,2}:\d{2}\s*/,'').trim();}
+    }
+  });
+  if(!latestStr){showToast('⚠ 找不到時間格式');return;}
+
+  const endEl=document.getElementById('drv-end-'+i);
+  const noworkEl=document.getElementById('drv-nowork-'+i);
+  if(noworkEl) noworkEl.checked=false;
+
+  // 用最晚那班的路線計算預估結束時間
+  const apiKey = settings.gmapsEnabled ? settings.gmapsKey : '';
+  const pickup = isPickupTrip(latestRoute);
+  let endStr = latestStr;
+
+  showToast(`⏳ ${d.name} 計算收班時間...`);
+  try{
+    const dest = extractDestination(latestRoute);
+    const orig = extractOrigin(latestRoute);
+    let driveMins = 60; // fallback
+
+    if(apiKey && orig && dest){
+      try{ driveMins = await fetchDrivingMinutes(orig, dest, apiKey); }
+      catch(e){ console.warn('gmaps error', e); }
+    }
+
+    const startMins = timeToMins(latestStr);
+    let totalMins;
+    if(pickup){
+      // 接機：出發時間 + 等待40分 + 行車到目的地
+      totalMins = startMins + (settings.pickupWait||40) + driveMins;
+    } else {
+      // 送機或一般：出發時間 + 行車到目的地
+      totalMins = startMins + driveMins;
+    }
+    endStr = minsToTime(totalMins);
+  }catch(e){ console.warn(e); }
+
+  if(endEl){endEl.value=endStr;endEl.disabled=false;}
+  if(noworkEl) noworkEl.checked=false;
+
+  // Save directly to scheduleData
+  const dateVal = document.getElementById('trips-date').value;
+  if(dateVal){
+    if(!scheduleData[dateVal]) scheduleData[dateVal]={};
+    scheduleData[dateVal][d.id]={
+      endTime:endStr,
+      lastRoute:latestRoute,
+      lastDest:extractDestination(latestRoute),
+      noWork:false
+    };
+    save('scheduleData',scheduleData);
+  }
+  showToast(`✓ ${d.name}：最晚班 ${latestStr}，預估收班 ${endStr}（已自動儲存）`);
+}
+
+function saveTodayEndTimes(){
+  const date = document.getElementById('trips-date').value;
+  if(!date){showToast('請先選日期');return;}
+  if(!scheduleData[date]) scheduleData[date]={};
+  const EXCL = ['陳坤松'];
+  const named = drivers.filter(d=>d.name&&!d.noSchedule&&!EXCL.includes(d.name)&&(d.type==='公司司機'||(d.type==='靠行司機'&&d.name==='陳志東')));
+  named.forEach((d,i)=>{
+    const endEl=document.getElementById('drv-end-'+i);
+    const noworkEl=document.getElementById('drv-nowork-'+i);
+    if(!endEl) return;
+    const existing=scheduleData[date][d.id]||{};
+    scheduleData[date][d.id]={...existing, endTime:endEl.value||'', noWork:noworkEl?noworkEl.checked:false};
+  });
+  save('scheduleData',scheduleData);
+  showToast('✓ 收班時間已儲存');
+}
+
+// ── Excel parse ──
+
+// 從地址字串抽出區域名稱（去掉縣市、門牌）
+function extractArea(addr){
+  if(!addr) return '';
+  addr = addr.trim().replace(/[(][^)]*[)]/g,'').trim();
+  // 機場直接回傳
+  if(/小港機場/.test(addr)) return '小港機場';
+  if(/桃園機場|桃機/.test(addr)) return '桃園機場';
+  if(/台中機場|清泉崗/.test(addr)) return '台中機場';
+  if(/松山機場/.test(addr)) return '松山機場';
+  // 移除縣市
+  addr = addr.replace(/^(台南市|高雄市|台中市|台北市|桃園市|嘉義市|嘉義縣|彰化縣|雲林縣|屏東縣|南投縣)/,'');
+  // 抓區域（xx區 or xx鄉 or xx鎮 or 地名）
+  const m = addr.match(/^([^\d號路街巷弄]{2,6}[區鄉鎮市])/);
+  if(m) return m[1];
+  // fallback: 取前4字
+  return addr.slice(0,4).replace(/^\s+/,'');
+}
+
+function buildRoute(cols){
+  // col[10]=出發地, col[11]=加點1, col[12]=加點2, col[13]=目的地
+  const parts = [];
+  const orig = extractArea(cols[10]||'');
+  const stop1 = extractArea(cols[11]||'');
+  const stop2 = extractArea(cols[12]||'');
+  const dest = extractArea(cols[13]||cols[12]||'');
+
+  if(orig) parts.push(orig);
+  if(stop1 && stop1!==orig && stop1!==dest) parts.push(stop1);
+  if(stop2 && stop2!==orig && stop2!==dest && stop2!==stop1) parts.push(stop2);
+  if(dest && dest!==orig) parts.push(dest);
+
+  return parts.join('→') || (cols[0]||'').replace(/[()（）]/g,'').trim();
+}
+
+function parseExcelTrips(){
+  const date = document.getElementById('trips-date').value;
+  if(!date){showToast('請先選日期');return;}
+  const text = document.getElementById('excel-paste').value.trim();
+  if(!text){showToast('請先貼上 Excel 內容');return;}
+
+  // 合併跨行儲存格：備註欄有換行時，把次行合併到上一行
+  const rawLines = text.split('\n');
+  const mergedRows = [];
+  rawLines.forEach(line=>{
+    const tabCount = (line.match(/\t/g)||[]).length;
+    // 判斷是否為新的有效班次行：
+    // 精簡格式：col[2]是8碼日期 → 至少要有4個tab才可能有日期
+    // 完整格式：col[6]是8碼日期 → 至少要有8個tab
+    // 用更寬鬆的條件：有日期格式(20260xxx)就當新行
+    const hasDate = /\t20260\d{3}\t/.test(line) || /^\d{1,3}\t\w.*\t2026/.test(line);
+    if(hasDate){
+      mergedRows.push(line);
+    } else if(mergedRows.length > 0 && line.trim()){
+      // 合併到上一行
+      mergedRows[mergedRows.length-1] += ' ' + line.trim();
+    }
+  });
+
+  const trips = [];
+
+  mergedRows.forEach(row=>{
+    const cols = row.split('\t');
+
+    // 偵測格式：精簡格式（人數 車種 日期 時間...）或完整格式（行程 航班 ...）
+    // 精簡格式：col[2]=日期(8碼), col[3]=時間(4碼)
+    // 完整格式：col[6]=日期(8碼), col[7]=時間(4碼)
+    let vehicleRaw, dateRaw, timeRaw, orderNo, origIdx, stop1Idx, stop2Idx, destIdx;
+
+    const col2 = (cols[2]||'').trim();
+    const col6 = (cols[6]||'').trim();
+
+    if(col2.match(/^\d{8}$/)){
+      // 精簡格式：人數 車種 日期 時間 司機 訂單 出發地 加點1 加點2 目的地
+      vehicleRaw = (cols[1]||'').trim();
+      dateRaw    = col2;
+      timeRaw    = (cols[3]||'').trim();
+      orderNo    = (cols[5]||'').trim();
+      origIdx=6; stop1Idx=7; stop2Idx=8; destIdx=9;
+    } else if(col6.match(/^\d{8}$/)){
+      // 完整格式：行程 航班 包車 備註 人數 車種 日期 時間 司機 訂單 出發地 加點1 加點2 目的地
+      vehicleRaw = (cols[5]||'').trim();
+      dateRaw    = col6;
+      timeRaw    = (cols[7]||'').trim();
+      const driverCol = (cols[8]||'').trim();
+      if(driverCol.includes('可德A')) return;
+      orderNo    = (cols[9]||'').trim();
+      origIdx=10; stop1Idx=11; stop2Idx=12; destIdx=13;
+    } else {
+      return; // 跳過標題列或無效行
+    }
+
+    if(!timeRaw.match(/^\d{3,4}$/)) return;
+
+    // 跳過直客（訂單號不是K開頭）—— 直客不在我們排班系統內
+    // 但還是要解析，讓使用者知道有這班
+    // if(!orderNo.startsWith('K')) return;
+
+    const tripYear=dateRaw.slice(0,4), tripMonth=dateRaw.slice(4,6), tripDay=dateRaw.slice(6,8);
+    const tripDate=`${tripYear}-${tripMonth}-${tripDay}`;
+    const timeStr=timeRaw.padStart(4,'0');
+    const timeFmt=timeStr.slice(0,2)+':'+timeStr.slice(2,4);
+
+    // 固定合約地點 → 略過不排班
+    const FIXED_LOCATIONS = ['嘉義智選假日酒店', '村田嘉義事務所'];
+    const allAddrs = [cols[origIdx]||'', cols[stop1Idx]||'', cols[stop2Idx]||'', cols[destIdx]||''].join(' ');
+    const isFixedContract = FIXED_LOCATIONS.some(loc => allAddrs.includes(loc));
+    if(isFixedContract) return; // 略過，不加入班次列表
+
+    // 建立路線（從地址抓區域）
+    const orig  = extractArea(cols[origIdx]||'');
+    const stop1 = extractArea(cols[stop1Idx]||'');
+    const stop2 = extractArea(cols[stop2Idx]||'');
+    const dest  = extractArea(cols[destIdx]||cols[stop2Idx]||'');
+    const routeParts = [orig];
+    if(stop1 && stop1!==orig && stop1!==dest) routeParts.push(stop1);
+    if(stop2 && stop2!==orig && stop2!==dest && stop2!==stop1) routeParts.push(stop2);
+    if(dest && dest!==orig) routeParts.push(dest);
+    const route = routeParts.filter(Boolean).join('→') || tripDate;
+
+    // 偵測車型
+    let vehicle='大車（T6）';
+    const vl=(vehicleRaw||'').toLowerCase();
+    if(/camry/i.test(vl)) vehicle='小車（CAMRY）';
+    else if(/granvia/i.test(vl)) vehicle='GRANVIA（陳志東專屬）';
+    else if(/es.?350|lexus/i.test(vl)) vehicle='ES350（簡正哲專屬）';
+    else if(/vito|rft-6139/i.test(vl)) vehicle='VITO RFT-6139';
+    else if(/alphard/i.test(vl)) vehicle='ALPHARD（需電話確認）';
+
+    const isCrossDay = tripDate !== date;
+    const id='t'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
+
+    // 包車時數
+    let charterHours = 0;
+    if(isFullFormat){
+      const ch = parseFloat((cols[2]||'').trim());
+      if(!isNaN(ch) && ch > 0) charterHours = ch;
+    } else {
+      const ch = parseFloat((cols[2]||'').trim());
+      if(!isNaN(ch) && ch > 0) charterHours = ch;
+    }
+
+    trips.push({id, date, time:timeFmt, route, vehicle, orderNo, amount:0, assignedDriver:'', crossDay:isCrossDay, actualDate:tripDate, charterHours});
+  });
+
+  if(!trips.length){showToast('⚠ 未解析到班次，請確認格式');return;}
+
+  // 合併（避免重複）
+  const existing = tripsData[date]||[];
+  const newTrips = [...existing];
+  trips.forEach(t=>{
+    const dup = newTrips.find(e=>e.time===t.time && e.orderNo===t.orderNo);
+    if(!dup) newTrips.push(t);
+  });
+  newTrips.sort((a,b)=>a.time.localeCompare(b.time));
+  tripsData[date] = newTrips;
+  save('tripsData', tripsData);
+  renderTripsList(date);
+  showToast(`✓ 解析完成，共 ${trips.length} 趟班次`);
+}
+
+
+function parseLineTrips(){
+  const date = document.getElementById('trips-date').value;
+  if(!date){showToast('請先選日期');return;}
+  const text = document.getElementById('excel-paste').value.trim();
+  if(!text){showToast('請先貼上班表內容');return;}
+
+  const lines=text.split('\n').map(l=>l.trim()).filter(l=>l);
+  const trips=[];
+  let curTime='', curRoute='', curNotes=[];
+
+  function flush(){
+    if(curTime){
+      const id='t'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
+      const combined=(curRoute+' '+curNotes.join(' ')).toLowerCase();
+      let vehicle='大車（T6）';
+      if(/granvia/i.test(combined)) vehicle='GRANVIA（陳志東專屬）';
+      else if(/alphard/i.test(combined)) vehicle='ALPHARD（需電話確認）';
+      else if(/es.?350|lexus/i.test(combined)) vehicle='ES350（簡正哲專屬）';
+      else if(/vito|rft/i.test(combined)) vehicle='VITO RFT-6139';
+      else if(/camry|小車/i.test(combined)) vehicle='小車（CAMRY）';
+      const amtMatch=curNotes.join(' ').match(/[\$＄](\d+)/);
+      trips.push({id,time:curTime,route:curRoute,notes:curNotes.join('｜'),vehicle,amount:amtMatch?parseInt(amtMatch[1]):0,assignedDriver:'',date,crossDay:false});
+      curTime=''; curRoute=''; curNotes=[];
+    }
+  }
+  lines.forEach(line=>{
+    if(/^\d{1,2}\/\d{1,2}[（(]/.test(line)) return;
+    const tm=line.match(/^(\d{1,2}):(\d{2})/);
+    if(tm){flush();curTime=tm[1].padStart(2,'0')+':'+tm[2];curRoute=line.replace(/^\d{1,2}:\d{2}\s*/,'').trim();}
+    else if(curTime) curNotes.push(line);
+  });
+  flush();
+
+  if(!trips.length){showToast('⚠ 找不到班次');return;}
+  const existing=tripsData[date]||[];
+  const newTrips=[...existing];
+  trips.forEach(t=>{const dup=newTrips.find(e=>e.time===t.time&&e.route===t.route);if(!dup)newTrips.push(t);});
+  newTrips.sort((a,b)=>a.time.localeCompare(b.time));
+  tripsData[date]=newTrips;
+  renderTripsList(date);
+  showToast(`✓ 解析完成，共 ${trips.length} 趟`);
+}
+
+function parseAllTrips(){
+  const date=document.getElementById('trips-date').value;
+  if(!date){showToast('請先選擇日期');return;}
+  const text=document.getElementById('line-paste').value.trim();
+  if(!text){showToast('請先貼上班表內容');return;}
+
+  const lines=text.split('\n').map(l=>l.trim()).filter(l=>l);
+  const trips=[];
+  let curTime='', curRoute='', curNotes=[];
+
+  function flush(){
+    if(curTime){
+      const id='t'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
+      // detect vehicle type from route/notes
+      const combined=(curRoute+' '+curNotes.join(' ')).toLowerCase();
+      let vehicle='大車（T6）';
+      if(/granvia/i.test(combined)) vehicle='GRANVIA（陳志東專屬）';
+      else if(/alphard/i.test(combined)) vehicle='ALPHARD（需電話確認）';
+      else if(/es.?350|lexus/i.test(combined)) vehicle='ES350（簡正哲專屬）';
+      else if(/vito|vclass|v-class|rft/i.test(combined)) vehicle='VITO RFT-6139';
+      else if(/camry|小車/i.test(combined)) vehicle='小車（CAMRY）';
+      // extract amount
+      const amtMatch=curNotes.join(' ').match(/[\$＄](\d+)/);
+      const amount=amtMatch?parseInt(amtMatch[1]):0;
+      trips.push({id,time:curTime,route:curRoute,notes:curNotes.join('｜'),vehicle,amount,assignedDriver:'',date});
+      curTime=''; curRoute=''; curNotes=[];
+    }
+  }
+
+  lines.forEach(line=>{
+    // skip date header lines like 05/08（五）
+    if(/^\d{1,2}\/\d{1,2}[（(]/.test(line)) return;
+    const tm=line.match(/^(\d{1,2}:\d{2})/);
+    if(tm){
+      flush();
+      curTime=tm[1].padStart(5,'0').slice(0,5);
+      curRoute=line.replace(/^\d{1,2}:\d{2}\s*/,'').trim();
+    } else if(curTime){
+      curNotes.push(line);
+    }
+  });
+  flush();
+
+  if(!trips.length){showToast('⚠ 找不到班次，請確認格式（需有 HH:MM 時間）');return;}
+
+  // merge with existing, avoid duplicates by time+route
+  const existing=tripsData[date]||[];
+  const newTrips=[...existing];
+  trips.forEach(t=>{
+    const dup=newTrips.find(e=>e.time===t.time&&e.route===t.route);
+    if(!dup) newTrips.push(t);
+  });
+  tripsData[date]=newTrips;
+  renderTripsList(date);
+  showToast(`✓ 解析完成，共 ${trips.length} 趟班次`);
+}
+
+function renderTripsList(date){
+  const el=document.getElementById('trips-list');
+  const trips=(tripsData[date]||[]).sort((a,b)=>a.time.localeCompare(b.time));
+  if(!trips.length){
+    el.innerHTML=`<div class="empty-msg">${dateLabel(date)||'此日期'}尚無班次，請貼上班表解析</div>`;
+    return;
+  }
+  el.innerHTML=trips.map((t,i)=>{
+    const isSpecial=['GRANVIA（陳志東專屬）','ES350（簡正哲專屬）','ALPHARD（需電話確認）','VITO RFT-6139'].includes(t.vehicle);
+    const cls=t.assignedDriver?'assigned':isSpecial?'special':'pending';
+    const assignedName=t.assignedDriver?(drivers.find(d=>d.id===t.assignedDriver)||{}).name||'':'';
+    return `<div class="trip-card ${cls}">
+      <button class="trip-del" onclick="deleteTrip('${date}',${i})">✕</button>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="trip-time">${esc(t.time)}</span>
+        ${t.orderNo?`<span class="badge badge-blue" style="font-size:10px">${esc(t.orderNo)}</span>`:''}
+        ${t.crossDay?`<span class="badge badge-amber" style="font-size:10px">跨日 ${t.actualDate?t.actualDate.slice(5):''}</span>`:''}
+      </div>
+      <div class="trip-route">${esc(t.route)}</div>
+      ${t.notes?`<div class="trip-meta" style="font-size:11px">${esc(t.notes.slice(0,80))}</div>`:''}
+      <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+        <span class="badge badge-blue">${esc(t.vehicle)}</span>
+        ${t.amount?`<span class="badge badge-green">$${t.amount}</span>`:''}
+        ${t.charterHours?`<span class="badge badge-amber">包車 ${t.charterHours}H</span>`:''}
+        ${isSpecial&&!t.assignedDriver?`<span class="badge badge-purple">⚠ 需確認</span>`:''}
+      </div>
+      <div class="trip-assign">
+        <select class="assign-select" onchange="assignDriver('${date}',${i},this.value)">
+          <option value="">— 指定司機（可選）—</option>
+          ${drivers.filter(d=>d.name).map(d=>`<option value="${d.id}" ${t.assignedDriver===d.id?'selected':''}>${esc(d.name)}（${esc(d.area)}）</option>`).join('')}
+        </select>
+        ${assignedName?`<span class="badge badge-green">✓ ${esc(assignedName)}</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function assignDriver(date,i,driverId){
+  if(!tripsData[date]) return;
+  const trips=tripsData[date].sort((a,b)=>a.time.localeCompare(b.time));
+  if(trips[i]) trips[i].assignedDriver=driverId;
+  renderTripsList(date);
+}
+
+function deleteTrip(date,i){
+  if(!tripsData[date]) return;
+  const trips=tripsData[date].sort((a,b)=>a.time.localeCompare(b.time));
+  trips.splice(i,1);
+  tripsData[date]=trips;
+  renderTripsList(date);
+}
+
+function clearTrips(){
+  const date=document.getElementById('trips-date').value;
+  if(!date) return;
+  if(!confirm(`確定清除 ${dateLabel(date)} 的所有班次？`)) return;
+  delete tripsData[date];
+  renderTripsList(date);
+  showToast('已清除');
+}
+
+function saveTrips(){
+  save('tripsData',tripsData);
+  // also compute end times for each driver based on their last trip of this date
+  const date=document.getElementById('trips-date').value;
+  computeEndTimesFromTrips(date);
+  showToast('✓ 班表已儲存');
+}
+
+// Compute last trip end time for each driver for a given date
+// stored in scheduleData[date][driverId] = {endTime, lastRoute, lastDest}
+async function computeEndTimesFromTrips(date){
+  const trips=(tripsData[date]||[]).sort((a,b)=>a.time.localeCompare(b.time));
+  const driverLastTrip={};
+  trips.forEach(t=>{
+    if(t.assignedDriver){
+      const cur=driverLastTrip[t.assignedDriver];
+      if(!cur||t.time>cur.time) driverLastTrip[t.assignedDriver]=t;
+    }
+  });
+
+  if(!scheduleData[date]) scheduleData[date]={};
+
+  for(const [driverId,trip] of Object.entries(driverLastTrip)){
+    let endTime=trip.time;
+    // try Google Maps
+    if(settings.gmapsEnabled&&settings.gmapsKey&&trip.route){
+      try{
+        const dest=extractDestination(trip.route);
+        const orig=extractOrigin(trip.route);
+        const mins=await fetchDrivingMinutes(orig,dest,settings.gmapsKey);
+        if(mins>0){
+          const totalMins=timeToMins(trip.time)+mins+settings.bufferMins;
+          endTime=minsToTime(totalMins);
+        }
+      }catch(e){console.warn('gmaps error',e);}
+    }
+    scheduleData[date][driverId]={endTime,lastRoute:trip.route,lastDest:extractDestination(trip.route),noWork:false};
+  }
+  save('scheduleData',scheduleData);
+}
+
+// ═══════════════════════════════════════
+// SCHEDULE SUGGESTION + AUTO ASSIGN
+// ═══════════════════════════════════════
+
+// ── 判斷路線是否為接機班（機場→目的地）──
+function isAirport(str){
+  // 小港=機場，小港區=一般地區
+  if(/小港區/.test(str)) return false;
+  if(/小港|桃機|桃園機場|松山機場|台中機場|清泉崗/.test(str)) return true;
+  return false;
+}
+
+function isPickupTrip(route){
+  // 出發地是機場 = 接機
+  return isAirport(extractOrigin(route||''));
+}
+
+function isDropoffTrip(route){
+  // 目的地是機場 = 送機
+  return isAirport(extractDestination(route||''));
+}
+
+// ── 計算一趟班次的「預估結束時間（分鐘）」──
+// 需要 Google Maps，如果沒有就用預設估算
+async function estimateTripEndMins(trip, apiKey){
+  const timeMins = timeToMins(trip.time);
+  if(timeMins < 0) return timeMins;
+
+  const orig = extractOrigin(trip.route);
+  const dest = extractDestination(trip.route);
+  const pickup = isPickupTrip(trip.route);
+
+  let driveMins = 60; // fallback 預設1小時
+  if(apiKey && orig && dest){
+    try{
+      driveMins = await fetchDrivingMinutes(orig, dest, apiKey);
+    }catch(e){ console.warn('gmaps error', e); }
+  }
+
+  if(pickup){
+    // 接機：班表時間到機場等 + 旅客出關等待時間 + 行車到目的地
+    return timeMins + (settings.pickupWait||40) + driveMins;
+  } else {
+    // 送機：班表時間接客 + 行車到機場
+    return timeMins + driveMins;
+  }
+}
+
+// ── 計算從A地到B地的行車時間（分鐘），無API時用預設 ──
+async function getDrivingMins(from, to, apiKey){
+  if(!from || !to || from===to) return 0;
+  if(apiKey){
+    try{ return await fetchDrivingMinutes(from, to, apiKey); }
+    catch(e){ console.warn('gmaps inter-trip error', e); }
+  }
+  return 30; // fallback 預設30分鐘
+}
+
+// ── 判斷司機是否可接某趟班 ──
+// prevTripEndMins: 司機上一班預估結束時間（分鐘）
+// prevTripDest: 司機上一班的目的地
+async function checkDriverForTripAsync(driver, trip, prevEndMins, prevDest, dateStr, apiKey){
+  const onLeave = isOnLeave(driver.id, dateStr);
+  const dow = new Date(dateStr+'T00:00:00').getDay();
+  const dowIdx = dow===0?6:dow-1;
+  const fixedOff = (driver.offDays||[]).includes(dowIdx);
+
+  if(onLeave) return {ok:false, reason:'請假中'};
+  if(fixedOff) return {ok:false, reason:'固定休假'};
+
+  // 固定車款
+  if(trip.vehicle==='GRANVIA（陳志東專屬）' && driver.name!=='陳志東') return {ok:false, reason:'需陳志東（GRANVIA）'};
+  if(trip.vehicle==='ES350（簡正哲專屬）') return {ok:false, reason:'需簡正哲（ES350）'};
+  if(trip.vehicle==='ALPHARD（需電話確認）') return {ok:false, reason:'需電話確認'};
+
+  const tripMins = timeToMins(trip.time);
+  const tripOrig = extractOrigin(trip.route);
+
+  // 計算司機最早可到這班出發地的時間
+  let availableMins = prevEndMins;
+
+  if(prevDest && tripOrig){
+    const transitMins = await getDrivingMins(prevDest, tripOrig, apiKey);
+    availableMins = prevEndMins + transitMins + settings.bufferMins;
+  }
+
+  if(tripMins < availableMins){
+    const shortage = availableMins - tripMins;
+    return {
+      ok: false,
+      reason: `趕不及（差 ${shortage} 分鐘，需到 ${minsToTime(availableMins)}）`,
+      availableMins
+    };
+  }
+
+  return {
+    ok: true,
+    reason: `可接（最早 ${minsToTime(availableMins)} 到達出發地）`,
+    availableMins,
+    prevDest
+  };
+}
+
+// 同步版本（不用 Google Maps，純估算）用於快速排班
+function checkDriverForTrip(driver, trip, prevDate, dateStr){
+  const ps = (scheduleData[prevDate]||{})[driver.id]||{};
+  const onLeave = isOnLeave(driver.id, dateStr);
+  const dow = new Date(dateStr+'T00:00:00').getDay();
+  const dowIdx = dow===0?6:dow-1;
+  const fixedOff = (driver.offDays||[]).includes(dowIdx);
+
+  if(onLeave) return {ok:false, reason:'請假中'};
+  if(fixedOff) return {ok:false, reason:'固定休假'};
+  if(trip.vehicle==='GRANVIA（陳志東專屬）' && driver.name!=='陳志東') return {ok:false, reason:'需陳志東（GRANVIA）'};
+  if(trip.vehicle==='ES350（簡正哲專屬）') return {ok:false, reason:'需簡正哲（ES350）'};
+  if(trip.vehicle==='ALPHARD（需電話確認）') return {ok:false, reason:'需電話確認'};
+  if(driver.noSchedule) return {ok:false, reason:'不排班'};
+
+  let earliestMins = 0;
+  let restNote = '';
+  if(ps.noWork || !ps.endTime){
+    earliestMins = 0;
+    restNote = ps.noWork ? '昨天沒出車' : '收班時間未知';
+  } else {
+    const endMins = timeToMins(ps.endTime);
+    const homeRegion = getRegion(driver.area||'');
+    const lastDestRegion = getRegion(ps.lastDest||'');
+    
+    // 高雄司機特殊邏輯：
+    // 若上一班在台南結束，要加上開車回高雄的時間（約60分鐘）才算可出車
+    let returnHomeMins = 0;
+    if(homeRegion==='kaohsiung' && lastDestRegion==='tainan'){
+      returnHomeMins = 60; // 台南→高雄約1小時
+    } else if(homeRegion==='kaohsiung' && lastDestRegion==='chiayi'){
+      returnHomeMins = 90; // 嘉義→高雄約1.5小時
+    }
+    
+    earliestMins = endMins + settings.restHours*60 + returnHomeMins;
+
+    // 如果有工作時段限制，且最早可出車已超過時段上限
+    // 則推到隔天時段開始（加 24 小時）
+    const note = driver.note||'';
+    const wm = note.match(/(\d{1,2}:\d{2})[~\-～至到](\d{1,2}:\d{2})/);
+    if(wm){
+      const windowEnd = timeToMins(wm[2]);
+      const windowStart = timeToMins(wm[1]);
+      if(earliestMins > windowEnd){
+        earliestMins = windowStart + 24*60;
+      }
+    }
+    restNote = `昨收 ${ps.endTime}${returnHomeMins?'（含回程'+returnHomeMins+'分）':''}，最早 ${minsToTime(earliestMins%1440)}`;
+  }
+
+  // 工作時段檢查（考慮跨日）
+  const tripTimeMins2 = timeToMins(trip.time);
+  const note2 = driver.note||'';
+  const wm2 = note2.match(/(\d{1,2}:\d{2})[~\-～至到](\d{1,2}:\d{2})/);
+  if(wm2){
+    const wStart = timeToMins(wm2[1]);
+    const wEnd = timeToMins(wm2[2]);
+    // 班次時間必須在工作時段內
+    if(tripTimeMins2 > wEnd || tripTimeMins2 < wStart){
+      return {ok:false, reason:`超出工作時段（${wm2[0]}）`};
+    }
+  }
+
+  const tripMins = timeToMins(trip.time);
+  // 比較時考慮跨日（earliestMins 可能超過 1440）
+  const effectiveTripMins = tripMins < (earliestMins % 1440) && earliestMins >= 1440
+    ? tripMins + 24*60  // 隔天的班次
+    : tripMins;
+
+  if(effectiveTripMins < earliestMins){
+    return {ok:false, reason:`休息不足（需到 ${minsToTime(earliestMins%1440)}）`, earliestMins};
+  }
+
+  return {ok:true, reason:restNote, earliestMins, lastDest: ps.lastDest||'', lastRoute: ps.lastRoute||''};
+}
+
+// 判斷地區類型
+function getRegion(str){
+  str = (str||'').toLowerCase();
+  if(/桃機|桃園機場|桃園/.test(str)) return 'north';
+  if(/台中|清泉崗|台中機場/.test(str)) return 'central';
+  if(/雲林|斗六|虎尾|斗南|北港|西螺/.test(str)) return 'yunlin';
+  if(/嘉義/.test(str)) return 'chiayi';
+  if(/高雄|小港|岡山|鳳山|永安|前金|苓雅|三民|鼓山|左營/.test(str)) return 'kaohsiung';
+  if(/台南|安南|仁德|永康|新營|善化|歸仁|安平|中西|佳里|麻豆|西港|官田|大內|下營/.test(str)) return 'tainan';
+  return 'other';
+}
+
+function scoreDriverForTrip(driver, trip, check, prevDate){
+  let score = 0;
+  const orig = extractOrigin(trip.route);
+  const dest = extractDestination(trip.route);
+  const lastDest = check.lastDest||'';
+  const area = driver.area||'';
+
+  const origRegion = getRegion(orig);
+  const destRegion = getRegion(dest);
+  const lastDestRegion = getRegion(lastDest);
+  const homeRegion = getRegion(area);
+  const isYunlin = homeRegion==='yunlin';
+  const isKaohsiung = homeRegion==='kaohsiung';
+
+  // ── 雲林司機邏輯 ──
+  if(isYunlin){
+    // 優先：從雲林出發
+    if(origRegion==='yunlin') score += 60;
+    // 優先：上一班在北部/中部，這班也從北部/中部出發（回頭車）
+    else if((lastDestRegion==='north'||lastDestRegion==='central') && (origRegion==='north'||origRegion==='central')) score += 50;
+    // 優先：從北部/中部出發（去程）
+    else if(origRegion==='north'||origRegion==='central') score += 30;
+    // 嘉義附近也可以
+    else if(origRegion==='chiayi') score += 20;
+    // 出發地在台南/高雄 → 需要空車南下，大扣分
+    else if(origRegion==='tainan'||origRegion==='kaohsiung') score -= 80;
+  }
+
+  // ── 高雄司機（陳志東、蘇金偉）邏輯 ──
+  else if(isKaohsiung){
+    // 從高雄出發最優先
+    if(origRegion==='kaohsiung') score += 50;
+    // 上一班在小港/高雄，這班也從高雄出發
+    else if(lastDestRegion==='kaohsiung' && origRegion==='kaohsiung') score += 40;
+    // 從台南出發也可以（昨晚在台南收班）
+    else if(origRegion==='tainan') score += 20;
+    // 小港接機後送台南
+    if(origRegion==='kaohsiung' && destRegion==='tainan') score += 15;
+  }
+
+  // ── 台南司機一般邏輯 ──
+  else {
+    // 末班位置在出發地附近
+    if(lastDest && orig){
+      if(lastDestRegion===origRegion) score += 40;
+      // 更精確比對
+      if(lastDest.slice(0,2)===orig.slice(0,2)||orig.includes(lastDest.slice(0,2))) score += 20;
+    }
+    // 住的地方在出發地附近
+    if(homeRegion===origRegion) score += 20;
+  }
+
+  // ── 有去有回加分 ──
+  // 送機到小港後，接機從小港回台南
+  if(lastDestRegion==='kaohsiung' && origRegion==='kaohsiung' && destRegion==='tainan') score += 25;
+  // 接機從小港回台南後，再送機去小港
+  if(lastDestRegion==='tainan' && origRegion==='tainan' && destRegion==='kaohsiung') score += 20;
+  // 北部回頭車：送到桃機後接桃機回南部
+  if(lastDestRegion==='north' && origRegion==='north') score += 35;
+
+  // ── 負載平衡：休息越久越優先 ──
+  const restMins = check.earliestMins >= 0 ? timeToMins(trip.time) - check.earliestMins : 999;
+  score += Math.min(restMins / 60, 8);
+
+  return score;
+}
+
+// ── 用 Google Maps 做真實距離排班 ──
+async function autoAssignWithMaps(autoTrips, companyDrivers, prevDate, dateStr, apiKey){
+  const MAX_TRIPS = 6;
+  const driverTripCount = {};
+  companyDrivers.forEach(d=>{ driverTripCount[d.id]=0; });
+
+  // 記錄每位司機目前的「最後位置」和「最後結束時間」
+  // 初始值來自前一天的收班資料
+  const driverState = {};
+  companyDrivers.forEach(d=>{
+    const ps = (scheduleData[prevDate]||{})[d.id]||{};
+    driverState[d.id] = {
+      lastDest: ps.lastDest||d.area||'',
+      endMins: ps.endTime ? timeToMins(ps.endTime) + settings.restHours*60 : 0,
+      noWork: ps.noWork||false
+    };
+  });
+
+  // 按時間順序逐班分配
+  for(const trip of autoTrips){
+    if(trip.assignedDriver){
+      // 已手動指定，更新該司機狀態
+      driverTripCount[trip.assignedDriver]=(driverTripCount[trip.assignedDriver]||0)+1;
+      const endMins = await estimateTripEndMins(trip, apiKey);
+      if(driverState[trip.assignedDriver]){
+        driverState[trip.assignedDriver].lastDest = extractDestination(trip.route);
+        driverState[trip.assignedDriver].endMins = endMins;
+      }
+      continue;
+    }
+    if(trip.vehicle==='ALPHARD（需電話確認）'||trip.vehicle==='ES350（簡正哲專屬）') continue;
+
+    const tripMins = timeToMins(trip.time);
+    const tripOrig = extractOrigin(trip.route);
+
+    // 評分每位司機
+    const candidates = [];
+    for(const driver of companyDrivers){
+      if((driverTripCount[driver.id]||0)>=MAX_TRIPS) continue;
+
+      // 基本檢查（假表、固定車款等）
+      const basicCheck = checkDriverForTrip(driver, trip, prevDate, dateStr);
+      if(!basicCheck.ok) continue;
+
+      const state = driverState[driver.id];
+
+      // 計算從上一班終點到這班出發地的行車時間
+      let transitMins = 0;
+      if(state.lastDest && tripOrig && state.lastDest !== tripOrig){
+        try{
+          transitMins = await getDrivingMins(state.lastDest, tripOrig, apiKey);
+        }catch(e){ transitMins = 30; }
+      }
+
+      // 最早可以到達出發地的時間
+      const availableMins = state.endMins + transitMins + settings.bufferMins;
+
+      // 時間上來不及
+      if(tripMins < availableMins) continue;
+
+      // 計算分數
+      let score = scoreDriverForTrip(driver, trip, {
+        ...basicCheck,
+        lastDest: state.lastDest,
+        earliestMins: availableMins
+      }, prevDate);
+
+      // 扣除已排趟數（負載平衡）
+      score -= (driverTripCount[driver.id]||0) * 15;
+
+      // 空等時間懲罰（等太久浪費）
+      const waitMins = tripMins - availableMins;
+      if(waitMins > 180) score -= Math.floor(waitMins/60) * 5;
+
+      candidates.push({driver, score, transitMins, availableMins});
+    }
+
+    if(candidates.length > 0){
+      candidates.sort((a,b)=>b.score-a.score);
+      const best = candidates[0];
+      trip.assignedDriver = best.driver.id;
+      driverTripCount[best.driver.id]++;
+
+      // 更新司機狀態
+      const endMins = await estimateTripEndMins(trip, apiKey);
+      driverState[best.driver.id].lastDest = extractDestination(trip.route);
+      driverState[best.driver.id].endMins = endMins;
+    }
+  }
+}
+
+async function runSchedule(){
+  const dateStr = document.getElementById('sched-date').value;
+  if(!dateStr){showToast('請選擇排班日期');return;}
+
+  const d = new Date(dateStr+'T00:00:00');
+  d.setDate(d.getDate()-1);
+  const prevDate = d.toISOString().slice(0,10);
+
+  const prevSchedule = scheduleData[prevDate]||{};
+  const trips = (tripsData[dateStr]||[]).sort((a,b)=>a.time.localeCompare(b.time));
+  const el = document.getElementById('sched-result');
+
+  // 排班司機：公司司機（排除不排班）+ 陳志東
+  // 排除：蘇金偉（非公司固定司機）
+  const EXCLUDE_FROM_SCHEDULE = ['陳坤松'];
+  const companyDrivers = drivers.filter(d=>
+    d.name &&
+    !d.noSchedule &&
+    !EXCLUDE_FROM_SCHEDULE.includes(d.name) &&
+    (d.type==='公司司機'||(d.type==='靠行司機'&&d.name==='陳志東'))
+  );
+
+  // ── Auto assign (async with Google Maps) ──
+  const driverTripCount = {};
+  companyDrivers.forEach(d=>{ driverTripCount[d.id]=0; });
+  const autoTrips = trips.map(t=>({...t}));
+
+  // 每位司機目前的「最後位置」和「最後結束時間」
+  // 初始值來自前一天收班資料
+  const driverState = {};
+  companyDrivers.forEach(d=>{
+    const ps = prevSchedule[d.id]||{};
+    driverState[d.id] = {
+      endMins: ps.noWork||!ps.endTime ? 0 : timeToMins(ps.endTime) + settings.restHours*60,
+      lastDest: ps.lastDest||ps.lastRoute||d.area||''
+    };
+  });
+
+  const MAX_TRIPS = 6;
+  const apiKey = settings.gmapsEnabled ? settings.gmapsKey : '';
+
+  // 按時間順序排班
+  for(const trip of autoTrips){
+    if(trip.assignedDriver){ 
+      driverTripCount[trip.assignedDriver]=(driverTripCount[trip.assignedDriver]||0)+1;
+      // 更新該司機狀態
+      const endMins = await estimateTripEndMins(trip, apiKey);
+      const st = driverState[trip.assignedDriver];
+      if(st) { st.endMins=endMins; st.lastDest=extractDestination(trip.route); }
+      continue; 
+    }
+    if(trip.vehicle==='ALPHARD（需電話確認）'||trip.vehicle==='ES350（簡正哲專屬）') continue;
+
+    const tripMins = timeToMins(trip.time);
+    const tripOrig = extractOrigin(trip.route);
+
+    // 評估每位司機
+    const candidates = [];
+    for(const driver of companyDrivers){
+      if((driverTripCount[driver.id]||0)>=MAX_TRIPS) continue;
+      
+      // 基本資格檢查
+      const basicCheck = checkDriverForTrip(driver, trip, prevDate, dateStr);
+      if(!basicCheck.ok) continue;
+
+      const st = driverState[driver.id];
+      
+      // 用 Google Maps 算從司機目前位置到這班出發地的時間
+      let transitMins = 0;
+      if(st.lastDest && tripOrig && st.lastDest!==tripOrig){
+        transitMins = await getDrivingMins(st.lastDest, tripOrig, apiKey);
+      }
+      
+      const earliestArrival = st.endMins + transitMins + settings.bufferMins;
+      
+      // 時間不夠
+      if(tripMins < earliestArrival) continue;
+
+      // 計算分數
+      let score = scoreDriverForTrip(driver, trip, {
+        ...basicCheck, 
+        lastDest: st.lastDest,
+        earliestMins: earliestArrival
+      }, prevDate);
+      score -= (driverTripCount[driver.id]||0) * 15;
+      
+      // 等待時間太長也扣分（避免司機等太久）
+      const waitMins = tripMins - earliestArrival;
+      if(waitMins > 180) score -= 10; // 等超過3小時扣分
+
+      candidates.push({driver, score, transitMins, earliestArrival});
+    }
+
+    candidates.sort((a,b)=>b.score-a.score);
+
+    if(candidates.length>0){
+      const winner = candidates[0];
+      trip.assignedDriver = winner.driver.id;
+      driverTripCount[winner.driver.id]++;
+      // 更新司機狀態
+      const endMins = await estimateTripEndMins(trip, apiKey);
+      driverState[winner.driver.id] = {
+        endMins,
+        lastDest: extractDestination(trip.route)
+      };
+    }
+  }
+
+  // ── Render ──
+  let html = '';
+  html += `<div style="margin-bottom:12px">
+    <div style="font-size:16px;font-weight:700;margin-bottom:2px">📅 ${dateLabel(dateStr)} 排班建議</div>
+    <div style="font-size:12px;color:var(--sub);margin-bottom:10px">依據 ${dateLabel(prevDate)} 收班時間計算</div>
+    <button style="width:100%;padding:13px;border-radius:12px;background:var(--green);color:white;font-size:15px;font-weight:700;border:none;cursor:pointer;font-family:inherit" onclick="applyAutoAssign()">✅ 確認排班，產生班表</button>
+  </div>`;
+
+  // Section 1: Trip assignments
+  const unassigned = autoTrips.filter(t=>!t.assignedDriver&&t.vehicle!=='ALPHARD（需電話確認）'&&t.vehicle!=='ES350（簡正哲專屬）');
+  const needConfirm = autoTrips.filter(t=>t.vehicle==='ALPHARD（需電話確認）'||t.vehicle==='ES350（簡正哲專屬）');
+
+  html += `<div style="font-size:12px;font-weight:700;color:var(--sub);letter-spacing:1px;margin-bottom:8px">
+    🚗 班次配對結果（${autoTrips.filter(t=>t.assignedDriver).length}/${autoTrips.length} 趟已配對）
+  </div>`;
+
+  // Group by driver
+  const byDriver = {};
+  autoTrips.forEach(t=>{
+    const key = t.assignedDriver||'__unassigned';
+    if(!byDriver[key]) byDriver[key]=[];
+    byDriver[key].push(t);
+  });
+
+  // Show assigned drivers
+  companyDrivers.forEach(drv=>{
+    const dTrips = byDriver[drv.id]||[];
+    if(!dTrips.length) return;
+    const ps = prevSchedule[drv.id]||{};
+    const endInfo = ps.endTime ? `昨收 ${ps.endTime}` : '收班未知';
+    html += `<div class="drv-block" style="border-left:4px solid var(--green)">
+      <div class="drv-header">
+        <div class="avatar" style="width:34px;height:34px;font-size:13px;background:var(--green)">${getInitial(drv.name)}</div>
+        <div style="flex:1">
+          <div class="ds-name">${esc(drv.name)} <span style="font-size:11px;color:var(--sub)">${esc(drv.area)}</span></div>
+          <div class="ds-sub">${endInfo}${ps.lastDest?' ｜ 末班：'+esc(ps.lastDest):''}</div>
+        </div>
+        <span class="badge badge-green">${dTrips.length} 趟</span>
+      </div>
+      <div class="drv-trips">
+        ${dTrips.map(t=>`
+          <div class="drv-trip-row" style="display:flex;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--bg)">
+            <span style="font-weight:700;min-width:40px;color:var(--accent)">${esc(t.time)}</span>
+            <span style="flex:1">${esc(t.route)}</span>
+            ${t.orderNo?`<span class="badge badge-blue" style="font-size:10px">${esc(t.orderNo)}</span>`:''}
+            <span class="badge ${t.vehicle.includes('CAMRY')?'badge-purple':'badge-blue'}" style="font-size:10px">${t.vehicle.includes('CAMRY')?'小車':'大車'}</span>
+            ${t.crossDay?`<span class="badge badge-amber" style="font-size:10px">跨日</span>`:''}
+          </div>`).join('')}
+      </div>
+    </div>`;
+  });
+
+  // Show unassigned
+  if(unassigned.length){
+    html += `<div style="font-size:12px;font-weight:700;color:var(--red);margin:12px 0 6px">⚠ 無法自動配對（${unassigned.length} 趟）</div>`;
+    unassigned.forEach(t=>{
+      // Show why each driver can't take it
+      const reasons = companyDrivers.map(drv=>{
+        const check = checkDriverForTrip(drv, t, prevDate, dateStr);
+        return check.ok ? null : `${drv.name}：${check.reason}`;
+      }).filter(Boolean);
+      html += `<div class="trip-card pending">
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="trip-time">${esc(t.time)}</span>
+          ${t.orderNo?`<span class="badge badge-blue" style="font-size:10px">${esc(t.orderNo)}</span>`:''}
+        </div>
+        <div class="trip-route">${esc(t.route)}</div>
+        <div style="font-size:11px;color:var(--red);margin-top:4px">${reasons.join(' ／ ')}</div>
+      </div>`;
+    });
+  }
+
+  // Show need-confirm
+  if(needConfirm.length){
+    html += `<div style="font-size:12px;font-weight:700;color:var(--purple);margin:12px 0 6px">📞 需另行確認（${needConfirm.length} 趟）</div>`;
+    needConfirm.forEach(t=>{
+      html += `<div class="trip-card special">
+        <span class="trip-time">${esc(t.time)}</span>
+        <div class="trip-route">${esc(t.route)}</div>
+        <span class="badge badge-purple" style="margin-top:6px;display:inline-block">${esc(t.vehicle)}</span>
+      </div>`;
+    });
+  }
+
+  // Section 2: Driver availability summary
+  html += `<div style="font-size:12px;font-weight:700;color:var(--sub);letter-spacing:1px;margin:16px 0 8px">👤 司機狀況總覽</div>`;
+  companyDrivers.forEach(drv=>{
+    const ps = prevSchedule[drv.id]||{};
+    const onLeave = isOnLeave(drv.id, dateStr);
+    const dow = new Date(dateStr+'T00:00:00').getDay();
+    const dowIdx = dow===0?6:dow-1;
+    const fixedOff = (drv.offDays||[]).includes(dowIdx);
+    const assigned = (byDriver[drv.id]||[]).length;
+
+    let status='ok', detail='';
+    if(onLeave){status='no';detail='請假中';}
+    else if(fixedOff){status='no';detail='固定休假';}
+    else if(!ps.endTime&&!ps.noWork){status='warn';detail='收班時間未輸入';}
+    else{
+      const endMins = ps.noWork?0:timeToMins(ps.endTime);
+      const earliest = ps.noWork?'隨時':minsToTime(endMins+settings.restHours*60);
+      detail = ps.noWork?'昨天沒出車，隨時可出車':`昨收 ${ps.endTime}，最早 ${earliest} 可出車`;
+      if(ps.lastDest) detail += `，末班在 ${ps.lastDest}`;
+      const farNote = getFarNote(drv, ps.lastDest||'');
+      if(farNote) detail += `<br>💡 ${farNote}`;
+    }
+
+    html += `<div class="sug-card ${status}">
+      <div class="sug-av ${status}">${getInitial(drv.name)}</div>
+      <div class="sug-body">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span class="sug-name">${esc(drv.name)}</span>
+          <span style="font-size:11px;color:var(--sub)">${esc(drv.area)}</span>
+          ${assigned?`<span class="badge badge-green">已排 ${assigned} 趟</span>`:(status==='no'?`<span class="badge badge-red">不可出車</span>`:`<span class="badge badge-amber">未排班</span>`)}
+        </div>
+        <div class="sug-detail">${detail}</div>
+      </div>
+    </div>`;
+  });
+
+  el.innerHTML = html;
+
+  // Store auto-assigned trips temporarily for apply
+  el._autoTrips = autoTrips;
+  el._dateStr = dateStr;
+}
+
+function applyAutoAssign(){
+  const el = document.getElementById('sched-result');
+  if(!el._autoTrips||!el._dateStr){showToast('請先按「產生建議」');return;}
+  const dateStr = el._dateStr;
+  const original = tripsData[dateStr]||[];
+  el._autoTrips.forEach(at=>{
+    const orig = original.find(t=>t.id===at.id);
+    if(orig && !orig.assignedDriver && at.assignedDriver){
+      orig.assignedDriver = at.assignedDriver;
+    }
+  });
+  tripsData[dateStr] = original;
+  save('tripsData', tripsData);
+  showToast('✅ 已套用，正在產生班表...');
+  renderScheduleOutput(el._autoTrips, dateStr);
+}
+
+function renderScheduleOutput(autoTrips, dateStr){
+  const el = document.getElementById('sched-result');
+  const d = new Date(dateStr+'T00:00:00');
+  const label = `${d.getMonth()+1}/${d.getDate()}（${DAYS[d.getDay()===0?6:d.getDay()-1]}）`;
+
+  // Group by driver
+  // 排班司機：公司司機（排除不排班）+ 陳志東
+  // 排除：蘇金偉（非公司固定司機）
+  const EXCLUDE_FROM_SCHEDULE = ['陳坤松'];
+  const companyDrivers = drivers.filter(d=>
+    d.name &&
+    !d.noSchedule &&
+    !EXCLUDE_FROM_SCHEDULE.includes(d.name) &&
+    (d.type==='公司司機'||(d.type==='靠行司機'&&d.name==='陳志東'))
+  );
+  const byDriver = {};
+  autoTrips.forEach(t=>{
+    if(!t.assignedDriver) return;
+    if(!byDriver[t.assignedDriver]) byDriver[t.assignedDriver]=[];
+    byDriver[t.assignedDriver].push(t);
+  });
+
+  const unassigned = autoTrips.filter(t=>!t.assignedDriver&&t.vehicle!=='ALPHARD（需電話確認）'&&t.vehicle!=='ES350（簡正哲專屬）');
+  const needConfirm = autoTrips.filter(t=>t.vehicle==='ALPHARD（需電話確認）'||t.vehicle==='ES350（簡正哲專屬）');
+
+  // Build plain text for copy
+  let plainText = '';
+  companyDrivers.forEach(drv=>{
+    const trips = (byDriver[drv.id]||[]).sort((a,b)=>a.time.localeCompare(b.time));
+    if(!trips.length) return;
+    plainText += `${drv.name} ${label}
+`;
+    trips.forEach(t=>{
+      plainText += `${t.time} ${t.route}${t.orderNo?' '+t.orderNo:''}\n`;
+
+    });
+    plainText += '\n';
+
+  });
+
+  // Build HTML display
+  let html = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+    <div style="font-size:16px;font-weight:700">📋 ${label} 排班結果</div>
+    <button class="parse-btn" onclick="regenerateSchedule()">↩ 重新產生</button>
+  </div>`;
+
+  // Copy area
+  html += `<div class="card" style="margin-bottom:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div class="card-title" style="margin:0">📤 複製傳給司機</div>
+      <button class="parse-btn" style="padding:7px 14px;font-size:12px" onclick="copyScheduleText()">複製全部</button>
+    </div>
+    <pre id="schedule-output" style="font-size:13px;line-height:1.9;white-space:pre-wrap;background:var(--bg);padding:12px;border-radius:8px;font-family:'Noto Sans TC',sans-serif">${esc(plainText.trim())}</pre>
+  </div>`;
+
+  // Per-driver cards
+  companyDrivers.forEach(drv=>{
+    const trips = (byDriver[drv.id]||[]).sort((a,b)=>a.time.localeCompare(b.time));
+    if(!trips.length) return;
+    html += `<div class="drv-block" style="border-left:4px solid var(--green);margin-bottom:8px">
+      <div class="drv-header">
+        <div class="avatar" style="width:34px;height:34px;font-size:13px;background:var(--green)">${getInitial(drv.name)}</div>
+        <div style="flex:1">
+          <span class="ds-name">${esc(drv.name)}</span>
+          <span style="font-size:11px;color:var(--sub);margin-left:6px">${esc(drv.area)}</span>
+        </div>
+        <span class="badge badge-green">${trips.length} 趟</span>
+      </div>
+      ${trips.map(t=>`<div style="display:flex;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--bg);font-size:13px">
+        <span style="font-weight:700;color:var(--accent);min-width:42px">${esc(t.time)}</span>
+        <span style="flex:1">${esc(t.route)}</span>
+        ${t.orderNo?`<span class="badge badge-blue" style="font-size:10px">${esc(t.orderNo)}</span>`:''}
+        ${t.crossDay?`<span class="badge badge-amber" style="font-size:10px">跨日</span>`:''}
+      </div>`).join('')}
+    </div>`;
+  });
+
+  // Unassigned
+  if(unassigned.length){
+    html += `<div class="hint red" style="margin-top:8px">⚠ 以下 ${unassigned.length} 趟無法自動配對，請手動安排：</div>`;
+    unassigned.forEach(t=>{
+      html += `<div class="trip-card pending" style="margin-top:6px">
+        <span class="trip-time">${esc(t.time)}</span>
+        <div class="trip-route">${esc(t.route)}</div>
+        ${t.orderNo?`<span class="badge badge-blue" style="font-size:10px">${esc(t.orderNo)}</span>`:''}
+      </div>`;
+    });
+  }
+
+  // Need confirm
+  if(needConfirm.length){
+    html += `<div class="hint amber" style="margin-top:8px">📞 以下 ${needConfirm.length} 趟需另行確認：</div>`;
+    needConfirm.forEach(t=>{
+      html += `<div class="trip-card special" style="margin-top:6px">
+        <span class="trip-time">${esc(t.time)}</span>
+        <div class="trip-route">${esc(t.route)}</div>
+        <span class="badge badge-purple" style="font-size:11px">${esc(t.vehicle)}</span>
+      </div>`;
+    });
+  }
+
+  el.innerHTML = html;
+  el._plainText = plainText;
+}
+
+function copyScheduleText(){
+  const el = document.getElementById('schedule-output');
+  if(!el) return;
+  const text = el.textContent;
+  navigator.clipboard.writeText(text).then(()=>{
+    showToast('✅ 已複製！可直接貼到 LINE 傳給司機');
+  }).catch(()=>{
+    // fallback
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('✅ 已複製！');
+  });
+}
+
+function regenerateSchedule(){
+  runSchedule();
+}
+
+function getFarNote(driver, lastDest){
+  if(!lastDest) return '';
+  const dest=lastDest.toLowerCase();
+  const area=(driver.area||'').toLowerCase();
+  // If driver is from south/central but ended in north
+  const northKeywords=['桃機','桃園','台北','北部','機場'];
+  const southKeywords=['台南','高雄','南部'];
+  const centralKeywords=['台中','中部'];
+  const driverSouth=southKeywords.some(k=>area.includes(k.toLowerCase()));
+  const driverCentral=centralKeywords.some(k=>area.includes(k.toLowerCase()));
+  const endedNorth=northKeywords.some(k=>dest.includes(k.toLowerCase()));
+  const endedSouth=southKeywords.some(k=>dest.includes(k.toLowerCase()));
+
+  if(driverSouth&&endedNorth) return `司機住${driver.area}，但昨日末班在北部，若有桃機→南部回頭車優先考慮`;
+  const driverYunlin=(driver.area||'').includes('雲林');
+  if(driverYunlin&&endedNorth) return `雲林司機，昨日末班在北部，可搭配北部→雲林或北部→南部班次`;
+  if(driverYunlin&&endedSouth) return `雲林司機，昨日末班在南部，可搭配南部→北部回頭車`;
+  return '';
+}
+
+function isOnLeave(driverId, dateStr){
+  if(!leaves.length){
+    try{
+      const v=localStorage.getItem('sched_leaves')||localStorage.getItem('leaves');
+      if(v) leaves=JSON.parse(v);
+    }catch(e){}
+  }
+  return leaves.some(l=>{
+    if(l.driverId!==driverId) return false;
+    return dateStr>=l.start&&dateStr<=l.end;
+  });
+}
+
+function isWithinWorkWindow(driver, tripTimeMins){
+  const note=driver.note||'';
+  const m=note.match(/(\d{1,2}:\d{2})[~\-～至到](\d{1,2}:\d{2})/);
+  if(!m) return true;
+  const startMins=timeToMins(m[1]);
+  const endMins=timeToMins(m[2]);
+  return tripTimeMins>=startMins&&tripTimeMins<=endMins;
+}
+
+// ═══════════════════════════════════════
+// LEAVE
+// ═══════════════════════════════════════
+function renderLeaveDriverSelect(){
+  const sel=document.getElementById('leave-driver');
+  sel.innerHTML=drivers.filter(d=>d.name).map(d=>`<option value="${d.id}">${esc(d.name)}</option>`).join('');
+}
+
+function addLeave(){
+  const dId=document.getElementById('leave-driver').value;
+  const start=document.getElementById('leave-start').value;
+  const end=document.getElementById('leave-end').value||start;
+  const note=document.getElementById('leave-note').value.trim();
+  if(!dId||!start){showToast('請選擇司機和開始日期');return;}
+  leaves.push({id:'l'+Date.now(),driverId:dId,start,end,note});
+  save('leaves',leaves);
+  renderLeaveList();
+  showToast('✓ 已新增假期');
+}
+
+function renderLeaveList(){
+  const el=document.getElementById('leave-list');
+  if(!leaves.length){el.innerHTML='<div class="empty-msg">尚無請假記錄</div>';return;}
+  el.innerHTML=leaves.map((l,i)=>{
+    const d=drivers.find(x=>x.id===l.driverId)||{name:'?'};
+    const dateRange=l.start===l.end?dateLabel(l.start):`${dateLabel(l.start)} ~ ${dateLabel(l.end)}`;
+    return `<div class="leave-row">
+      <div style="font-size:14px;font-weight:700;min-width:56px">${esc(d.name)}</div>
+      <div style="flex:1;font-size:12px;color:var(--sub)">${dateRange}${l.note?' ｜ '+esc(l.note):''}</div>
+      <button class="leave-del" onclick="deleteLeave(${i})">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function deleteLeave(i){leaves.splice(i,1);save('leaves',leaves);renderLeaveList();}
+
+// ═══════════════════════════════════════
+// DRIVERS
+// ═══════════════════════════════════════
+function defaultDriver(){return {id:'d'+Date.now(),name:'',type:'公司司機',area:'',vehicle:'大車（T6）',note:'',offDays:[]};}
+
+function renderDrivers(){
+  const el=document.getElementById('driver-list');
+  el.innerHTML=drivers.map((d,i)=>`
+    <div class="card" style="padding:14px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div class="avatar" id="av${i}">${getInitial(d.name)}</div>
+        <div style="flex:1">
+          <input class="name-input" type="text" value="${esc(d.name)}" placeholder="司機姓名"
+            oninput="drivers[${i}].name=this.value;document.getElementById('av${i}').textContent=this.value?this.value[0]:'?'">
+          <select class="type-select" onchange="drivers[${i}].type=this.value">
+            <option ${d.type==='公司司機'?'selected':''}>公司司機</option>
+            <option ${d.type==='靠行司機'?'selected':''}>靠行司機</option>
+          </select>
+        </div>
+        <button class="remove-btn" onclick="removeDriver(${i})">移除</button>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>居住區域</label>
+          <input type="text" value="${esc(d.area)}" placeholder="例：台南安南、高雄鳳山" oninput="drivers[${i}].area=this.value">
+        </div>
+        <div class="field"><label>車型</label>
+          <select onchange="drivers[${i}].vehicle=this.value">
+            ${VEHICLE_TYPES.map(v=>`<option ${d.vehicle===v?'selected':''}>${v}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">固定休假日（紅色＝休假）</div>
+      <div class="day-row">
+        ${['一','二','三','四','五','六','日'].map((day,di)=>`
+          <button class="day-btn ${(d.offDays||[]).includes(di)?'off':''}" onclick="toggleOffDay(${i},${di})">${day}</button>
+        `).join('')}
+      </div>
+      <input class="note-field" type="text" value="${esc(d.note)}" placeholder="備註..." oninput="drivers[${i}].note=this.value">
+    </div>
+  `).join('');
+}
+
+function toggleOffDay(i,di){
+  const pos=(drivers[i].offDays||[]).indexOf(di);
+  if(pos>-1) drivers[i].offDays.splice(pos,1); else (drivers[i].offDays=drivers[i].offDays||[]).push(di);
+  renderDrivers();
+}
+
+function addDriver(){drivers.push(defaultDriver());renderDrivers();setTimeout(()=>window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'}),100);}
+function removeDriver(i){if(drivers.length<=1){showToast('⚠ 至少保留一位司機');return;}if(confirm('確定移除？')){drivers.splice(i,1);renderDrivers();}}
+
+function saveDrivers(){
+  // collect current input values
+  drivers.forEach((d,i)=>{
+    const nameEl=document.querySelector(`#driver-list .card:nth-child(${i+1}) .name-input`);
+    if(nameEl) d.name=nameEl.value;
+  });
+  save('drivers',drivers);
+  renderLeaveDriverSelect();
+  showToast('✓ 司機資料已儲存');
+}
+
+function showExportModal(){
+  const allData = {
+    drivers: JSON.parse(localStorage.getItem('sched_drivers')||'[]'),
+    leaves: JSON.parse(localStorage.getItem('sched_leaves')||'[]'),
+    scheduleData: JSON.parse(localStorage.getItem('sched_scheduleData')||'{}'),
+    tripsData: JSON.parse(localStorage.getItem('sched_tripsData')||'{}'),
+    settings: JSON.parse(localStorage.getItem('sched_settings')||'{}'),
+  };
+  const text = JSON.stringify(allData, null, 2);
+  const box=document.createElement('div');
+  box.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  box.innerHTML=`<div style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:520px;max-height:85vh;display:flex;flex-direction:column">
+    <div style="font-weight:700;margin-bottom:8px">📤 匯出所有資料</div>
+    <div style="font-size:12px;color:#888;margin-bottom:8px">複製後傳給開發者，或備份用</div>
+    <textarea style="flex:1;min-height:200px;font-size:10px;font-family:monospace;border:1px solid #ddd;border-radius:8px;padding:8px" readonly>${text}</textarea>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button onclick="navigator.clipboard.writeText(this.closest('div[style*=fixed]').querySelector('textarea').value).then(()=>{this.textContent='✓ 已複製！'})"
+        style="flex:1;padding:10px;background:#4CAF50;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer">複製全部</button>
+      <button onclick="this.closest('div[style*=fixed]').remove()"
+        style="flex:1;padding:10px;background:#eee;border:none;border-radius:8px;font-size:14px;cursor:pointer">關閉</button>
+    </div>
+  </div>`;
+  document.body.appendChild(box);
+}
+
+function showImportModal(){
+  const box=document.createElement('div');
+  box.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  box.innerHTML=`<div style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:520px;max-height:85vh;display:flex;flex-direction:column">
+    <div style="font-weight:700;margin-bottom:8px">📥 匯入資料</div>
+    <div style="font-size:12px;color:#888;margin-bottom:8px">把之前匯出的資料貼在這裡，即可恢復所有設定、假表、班表。</div>
+    <textarea id="import-box" style="flex:1;min-height:200px;font-size:11px;font-family:monospace;border:1px solid #ddd;border-radius:8px;padding:8px" placeholder="貼上匯出的 JSON 資料..."></textarea>
+    <div id="import-msg" style="font-size:12px;margin-top:6px;min-height:18px"></div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button onclick="doImport(this)"
+        style="flex:1;padding:10px;background:#3a6ea5;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer">匯入</button>
+      <button onclick="this.closest('div[style*=fixed]').remove()"
+        style="flex:1;padding:10px;background:#eee;border:none;border-radius:8px;font-size:14px;cursor:pointer">關閉</button>
+    </div>
+  </div>`;
+  document.body.appendChild(box);
+}
+
+function doImport(btn){
+  const text=(document.getElementById('import-box').value||'').trim();
+  const msg=document.getElementById('import-msg');
+  if(!text){msg.style.color='red';msg.textContent='請先貼上資料';return;}
+  try{
+    const data=JSON.parse(text);
+    if(data.drivers){localStorage.setItem('sched_drivers',JSON.stringify(data.drivers));drivers=data.drivers;}
+    if(data.leaves){localStorage.setItem('sched_leaves',JSON.stringify(data.leaves));leaves=data.leaves;}
+    if(data.scheduleData){localStorage.setItem('sched_scheduleData',JSON.stringify(data.scheduleData));scheduleData=data.scheduleData;}
+    if(data.tripsData){localStorage.setItem('sched_tripsData',JSON.stringify(data.tripsData));tripsData=data.tripsData;}
+    if(data.settings){localStorage.setItem('sched_settings',JSON.stringify(data.settings));settings=Object.assign(settings,data.settings);}
+    // Re-render everything
+    renderDrivers();
+    renderLeaveDriverSelect();
+    renderLeaveList();
+    loadTripsForDate();
+    msg.style.color='green';
+    msg.textContent='✓ 匯入成功！所有資料已恢復。';
+    btn.textContent='✓ 完成';
+    setTimeout(()=>btn.closest('div[style*=fixed]').remove(),1500);
+  }catch(e){
+    msg.style.color='red';
+    msg.textContent='格式錯誤，請確認是完整的匯出資料';
+  }
+}
+
+function exportDriverData(){
+  const data=localStorage.getItem('sched_drivers')||JSON.stringify(drivers);
+  const box=document.createElement('div');
+  box.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  box.innerHTML=`<div style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:500px">
+    <div style="font-weight:700;margin-bottom:10px">📤 匯出司機資料</div>
+    <textarea id="export-box" style="width:100%;height:140px;font-size:11px;font-family:monospace;border:1px solid #ddd;border-radius:8px;padding:8px" readonly>${data}</textarea>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button onclick="document.getElementById('export-box').select();document.execCommand('copy');this.textContent='✓ 已複製！'"
+        style="flex:1;padding:10px;background:#4CAF50;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer">複製</button>
+      <button onclick="this.closest('div[style*=fixed]').remove()"
+        style="flex:1;padding:10px;background:#eee;border:none;border-radius:8px;font-size:14px;cursor:pointer">關閉</button>
+    </div>
+  </div>`;
+  document.body.appendChild(box);
+}
+
+// ═══════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════
+function saveSettings(){
+  settings.restHours=parseInt(document.getElementById('rest-hours').value)||8;
+  settings.bufferMins=parseInt(document.getElementById('buffer-mins').value)||20;
+  settings.pickupWait=parseInt(document.getElementById('pickup-wait').value)||40;
+  settings.gmapsKey=(document.getElementById('gmaps-key').value||'').trim();
+  settings.gmapsEnabled=document.getElementById('gmaps-enabled').checked;
+  save('settings',settings);
+  updateGmapsStatus();
+  showToast('✓ 設定已儲存');
+}
+
+function updateGmapsStatus(){
+  const el=document.getElementById('gmaps-status');
+  if(!el) return;
+  if(settings.gmapsEnabled&&settings.gmapsKey){
+    el.style.display='block';el.textContent='✓ Google Maps 已啟用';el.className='hint green';
+  } else if(settings.gmapsEnabled&&!settings.gmapsKey){
+    el.style.display='block';el.textContent='⚠ 已勾選啟用但未填入 API 金鑰';el.className='hint amber';
+  } else {
+    el.style.display='none';
+  }
+}
+
+// ═══════════════════════════════════════
+// GOOGLE MAPS
+// ═══════════════════════════════════════
+function extractOrigin(route){
+  const parts=route.split(/[➡→\->＋+]+/).map(s=>s.trim()).filter(s=>s);
+  return parts[0]||route;
+}
+function extractDestination(route){
+  const parts=route.split(/[➡→\->＋+]+/).map(s=>s.trim()).filter(s=>s);
+  return parts.length>=2?parts[parts.length-1]:parts[0]||route;
+}
+
+function loadGoogleMapsSDK(apiKey){
+  return new Promise((resolve,reject)=>{
+    if(window.google&&window.google.maps&&window.google.maps.DistanceMatrixService){resolve();return;}
+    const old=document.getElementById('gmaps-sdk');if(old)old.remove();
+    const s=document.createElement('script');s.id='gmaps-sdk';
+    s.src=`https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry`;
+    s.onload=()=>resolve();s.onerror=()=>reject(new Error('SDK 載入失敗'));
+    document.head.appendChild(s);
+  });
+}
+
+async function fetchDrivingMinutes(origin,dest,apiKey){
+  await loadGoogleMapsSDK(apiKey);
+  return new Promise((resolve,reject)=>{
+    const svc=new window.google.maps.DistanceMatrixService();
+    svc.getDistanceMatrix({
+      origins:[origin+',台灣'],destinations:[dest+',台灣'],
+      travelMode:window.google.maps.TravelMode.DRIVING,language:'zh-TW'
+    },(res,status)=>{
+      if(status!=='OK'){reject(new Error(status));return;}
+      const el=res.rows[0]&&res.rows[0].elements[0];
+      if(!el||el.status!=='OK'){reject(new Error('no route'));return;}
+      resolve(Math.round(el.duration.value/60));
+    });
+  });
+}
+
+// ── Boot ──
+loadAll();
+</script>
+</body>
+</html>
