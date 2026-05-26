@@ -562,10 +562,6 @@ function parseExcelTrips(){
 
     if(!timeRaw.match(/^\d{3,4}$/)) return;
 
-    // 跳過直客（訂單號不是K開頭）—— 直客不在我們排班系統內
-    // 但還是要解析，讓使用者知道有這班
-    // if(!orderNo.startsWith('K')) return;
-
     const tripYear=dateRaw.slice(0,4), tripMonth=dateRaw.slice(4,6), tripDay=dateRaw.slice(6,8);
     const tripDate=`${tripYear}-${tripMonth}-${tripDay}`;
     const timeStr=timeRaw.padStart(4,'0');
@@ -597,7 +593,10 @@ function parseExcelTrips(){
     else if(/vito|rft-6139/i.test(vl)) vehicle='VITO RFT-6139';
     else if(/alphard/i.test(vl)) vehicle='ALPHARD（需電話確認）';
 
+    // 跨日：班次日期與選擇日期不同（例如隔天凌晨的班）
     const isCrossDay = tripDate !== date;
+    // 都歸到選擇的排班日期，跨日標示提醒
+    
     const id='t'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
 
     // 包車時數
